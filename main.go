@@ -1,5 +1,4 @@
 // A basic Go web server that traces DNS resolution steps using miekg/dns and Gin framework
-// Run: go run main.go
 
 package main
 
@@ -9,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/miekg/dns"
 )
@@ -16,8 +16,18 @@ import (
 func main() {
 	r := gin.Default()
 
-	r.GET("/", serveForm)
+	r.Use(cors.Default())
+	// Serve static React build files
+	r.Static("/static", "./client/build/static")
+	r.StaticFile("/favicon.ico", "./client/build/favicon.ico")
+	r.StaticFile("/manifest.json", "./client/build/manifest.json")
+
 	r.GET("/trace", handleTrace)
+
+	// Serve index.html for all other paths (React Router support)
+	r.NoRoute(func(c *gin.Context) {
+		c.File("./client/build/index.html")
+	})
 
 	fmt.Println("Server running on http://localhost:8080")
 	log.Fatal(r.Run(":8080"))
