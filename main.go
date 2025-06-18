@@ -85,13 +85,15 @@ func traceDNS(domain string) ([]string, error) {
 			break
 		}
 
+		hops = append(hops, "")
 		// Resolve one of the next NS records to IP
 		nsHost := nsRecords[0]
 		msgA := new(dns.Msg)
 		msgA.SetQuestion(nsHost, dns.TypeA)
-		respA, _, err := c.Exchange(msgA, server)
+		resolver := "8.8.8.8:53" // instead of using 'server'
+		respA, _, err := c.Exchange(msgA, resolver)
 		if err != nil || len(respA.Answer) == 0 {
-			break // can't resolve next hop
+			break
 		}
 
 		for _, a := range respA.Answer {
@@ -102,6 +104,7 @@ func traceDNS(domain string) ([]string, error) {
 		}
 	}
 
+	hops = append(hops, "")
 	// Final A/AAAA resolution
 	msg := new(dns.Msg)
 	msg.SetQuestion(domain, dns.TypeA)
