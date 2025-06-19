@@ -40,3 +40,7 @@ after completion, restart vscode
 ## profiling
 
 access `http://localhost:6060/debug/pprof/`
+
+## tracing
+
+try `curl -k "https://localhost/trace?domain=google.com"` and observe tracing result in server console

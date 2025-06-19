@@ -16,9 +16,16 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func main() {
+	tp, err := initTracer()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = tp.Shutdown(context.Background()) }()
+
 	httpsRouter := httpsRouter()
 	httpRedirect := proxyRouter()
 
@@ -90,6 +97,9 @@ func httpsRouter() *gin.Engine {
 	httpsRouter.NoRoute(func(c *gin.Context) {
 		c.File("./client/build/index.html")
 	})
+
+	// This middleware creates root spans for HTTP requests
+	httpsRouter.Use(otelgin.Middleware("dns_say_what"))
 	return httpsRouter
 }
 
