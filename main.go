@@ -3,10 +3,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -14,37 +19,66 @@ import (
 )
 
 func main() {
-	r := gin.Default()
-
-	r.Use(cors.Default())
-	// Serve static React build files
-	r.Static("/static", "./client/build/static")
-	r.StaticFile("/favicon.ico", "./client/build/favicon.ico")
-	r.StaticFile("/manifest.json", "./client/build/manifest.json")
-
-	r.GET("/trace", handleTrace)
-
-	// Serve index.html for all other paths (React Router support)
-	r.NoRoute(func(c *gin.Context) {
+	// Gin routers, serve two functionality:
+	// 1. serve static react build
+	// 2. accept /trace GET request
+	httpsRouter := gin.Default()
+	httpsRouter.Use(cors.Default())
+	httpsRouter.Static("/static", "./client/build/static")
+	httpsRouter.StaticFile("/favicon.ico", "./client/build/favicon.ico")
+	httpsRouter.StaticFile("/manifest.json", "./client/build/manifest.json")
+	httpsRouter.GET("/trace", handleTrace)
+	httpsRouter.NoRoute(func(c *gin.Context) {
 		c.File("./client/build/index.html")
 	})
 
-	fmt.Println("Server running on http://localhost:8080")
-	log.Fatal(r.Run(":8080"))
-}
+	// tls/ssl redirect all traffic from :80 to :443
+	httpRedirect := gin.Default()
+	httpRedirect.Use(func(c *gin.Context) {
+		host := strings.Split(c.Request.Host, ":")[0]
+		target := "https://" + host + c.Request.RequestURI
+		c.Redirect(http.StatusMovedPermanently, target)
+	})
 
-func serveForm(c *gin.Context) {
-	html := `<html>
-		<head><title>DNS Trace</title></head>
-		<body>
-		<h1>DNS Trace Tool</h1>
-		<form action="/trace">
-		  Domain: <input name="domain" type="text" />
-		  <input type="submit" value="Trace DNS" />
-		</form>
-		</body>
-		</html>`
-	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+	// HTTP and HTTPS servers
+	httpSrv := &http.Server{Addr: ":80", Handler: httpRedirect}
+	httpsSrv := &http.Server{
+		Addr:    ":443",
+		Handler: httpsRouter,
+	}
+
+	// Run both in goroutines
+	go func() {
+		fmt.Println("🚀 HTTPS server on https://localhost")
+		if err := httpsSrv.ListenAndServeTLS("cert.pem", "key.pem"); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTPS server error: %v", err)
+		}
+	}()
+
+	go func() {
+		fmt.Println("🌐 HTTP redirect server on http://localhost")
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server error: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	fmt.Println("\n🛑 Shutting down servers...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := httpsSrv.Shutdown(ctx); err != nil {
+		log.Fatalf("HTTPS Shutdown: %v", err)
+	}
+	if err := httpSrv.Shutdown(ctx); err != nil {
+		log.Fatalf("HTTP Shutdown: %v", err)
+	}
+
+	fmt.Println("✅ Graceful shutdown complete")
 }
 
 func handleTrace(c *gin.Context) {
