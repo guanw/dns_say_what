@@ -28,6 +28,10 @@ func main() {
 		Addr:    ":443",
 		Handler: httpsRouter,
 	}
+	pprofSrv := &http.Server{
+		Addr:    ":6060",
+		Handler: http.DefaultServeMux, // pprof handlers
+	}
 
 	// Run both in goroutines
 	go func() {
@@ -46,7 +50,7 @@ func main() {
 
 	go func() {
 		log.Println("📊 pprof listening on :6060")
-		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+		if err := pprofSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("pprof server failed: %v", err)
 		}
 	}()
@@ -65,6 +69,9 @@ func main() {
 	}
 	if err := httpSrv.Shutdown(ctx); err != nil {
 		log.Fatalf("HTTP Shutdown: %v", err)
+	}
+	if err := pprofSrv.Shutdown(ctx); err != nil {
+		log.Fatalf("profiler Shutdown: %v", err)
 	}
 
 	fmt.Println("✅ Graceful shutdown complete")
