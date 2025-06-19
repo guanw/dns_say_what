@@ -36,3 +36,7 @@ add following to ~/Library/Application Support/Code/User/settings.json
 cmd+shift+p -> Go: Install/Update tool -> add all
 
 after completion, restart vscode
+
+## profiling
+
+access `http://localhost:6060/debug/pprof/`

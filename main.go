@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strings"
@@ -40,6 +41,13 @@ func main() {
 		fmt.Println("🌐 HTTP redirect server on http://localhost")
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("HTTP server error: %v", err)
+		}
+	}()
+
+	go func() {
+		log.Println("📊 pprof listening on :6060")
+		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+			log.Fatalf("pprof server failed: %v", err)
 		}
 	}()
 
