@@ -20,3 +20,5 @@
 # cert
 cert.pem
 key.pem
+
+.vscode
