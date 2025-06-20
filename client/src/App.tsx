@@ -2,22 +2,25 @@ import DNSFlow from "./DNSFlow";
 import Input from "./Input";
 import Stack from "@mui/material/Stack";
 import Submit from "./Submit";
+import { useState } from "react";
+import { useDNSQuery } from "./Hooks/useDNSQuery";
+import CircularProgress from "@mui/material/CircularProgress";
+import Box from "@mui/material/Box";
 
 function App() {
-  // TODO get trace from backend
-  const dnsTraceSteps: string[] = [
-    "Queried 198.41.0.4:53 → NS: l.gtld-servers.net., j.gtld-servers.net., h.gtld-servers.net., d.gtld-servers.net., b.gtld-servers.net., f.gtld-servers.net., k.gtld-servers.net., m.gtld-servers.net., i.gtld-servers.net., g.gtld-servers.net., a.gtld-servers.net., c.gtld-servers.net., e.gtld-servers.net.",
-    "Queried 192.41.162.30:53 → NS: ns2.google.com., ns1.google.com., ns3.google.com., ns4.google.com.",
-    "Queried 216.239.34.10:53 → NS:",
-    "Final A record from 216.239.34.10:53: 142.250.65.174",
-  ];
+  const [inputDomain, setInputDomain] = useState("");
+  const [domain, setDomain] = useState("");
+
+  const { data, error, isLoading } = useDNSQuery(domain);
   return (
     <Stack spacing={2}>
       <Stack direction="row" spacing={2} sx={{ width: "100%" }}>
-        <Input />
-        <Submit />
+        <Input domain={inputDomain} setDomain={setInputDomain} />
+        <Submit inputDomain={inputDomain} setDomain={setDomain} />
       </Stack>
-      <DNSFlow trace={dnsTraceSteps} />
+      {isLoading && <CircularProgress />}
+      {error instanceof Error && <Box color="red">Error: {error.message}</Box>}
+      {data && <DNSFlow trace={data} />}
     </Stack>
   );
 }
