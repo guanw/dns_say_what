@@ -1,4 +1,7 @@
 import DNSFlow from "./DNSFlow";
+import Input from "./Input";
+import Stack from "@mui/material/Stack";
+import Submit from "./Submit";
 
 function App() {
   // TODO get trace from backend
@@ -9,9 +12,13 @@ function App() {
     "Final A record from 216.239.34.10:53: 142.250.65.174",
   ];
   return (
-    <>
+    <Stack spacing={2}>
+      <Stack direction="row" spacing={2} sx={{ width: "100%" }}>
+        <Input />
+        <Submit />
+      </Stack>
       <DNSFlow trace={dnsTraceSteps} />
-    </>
+    </Stack>
   );
 }
 
